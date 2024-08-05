@@ -1,9 +1,6 @@
 /* global api */
-const axios = require("axios");
-
 class FinnZhDictionary {
-  constructor(options) {
-    this.options = options;
+  constructor() {
     this.apiUrl = "https://www.sanakirja.fi/api/search/api/sk/search";
     this.headers = {
       Accept: "application/json",
@@ -19,13 +16,9 @@ class FinnZhDictionary {
 
   async displayName() {
     let locale = await api.locale();
-    if (locale.indexOf("CN") != -1) return "芬兰";
-    if (locale.indexOf("TW") != -1) return "芬兰";
+    if (locale.indexOf("CN") != -1) return "朗文英汉5词典(MDX)";
+    if (locale.indexOf("TW") != -1) return "朗文英英5词典(MDX)";
     return "enen_LDOCE5(MDX)";
-  }
-
-  setOptions(options) {
-    this.options = options;
   }
 
   async findTerm(word) {
@@ -40,18 +33,21 @@ class FinnZhDictionary {
       entry_langs: "true",
     };
 
+    const urlParams = new URLSearchParams(params).toString();
+    const url = `${this.apiUrl}?${urlParams}`;
+
     try {
-      const response = await axios.get(this.apiUrl, {
+      const response = await api.fetch(url, {
         headers: this.headers,
-        params,
       });
+
       if (response.status !== 200) {
         throw new Error(
           `Failed to fetch data. Status code: ${response.status}`
         );
       }
 
-      const data = response.data;
+      const data = await response.json();
       console.log(data);
 
       const translations = [];
@@ -77,16 +73,6 @@ class FinnZhDictionary {
     } catch (error) {
       throw new Error(`Error fetching data: ${error.message}`);
     }
-  }
-
-  renderCSS() {
-    let css = `
-            <style>
-                span.examtype {margin: 0 3px;padding: 0 3px;font-weight: normal;font-size: 0.8em;color: white;background-color: #5cb85c;border-radius: 3px;}
-                ul.ec, li.ec {list-style: square inside; margin:0; padding:0;}
-                span.ec_chn {margin-left: -5px;}
-            </style>`;
-    return css;
   }
 }
 
