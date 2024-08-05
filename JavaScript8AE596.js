@@ -1,6 +1,6 @@
 /* global api */
-class FinnZhDictionary {
-  constructor() {
+class finnZhDictionary {
+  constructor(options) {
     this.apiUrl = "https://www.sanakirja.fi/api/search/api/sk/search";
     this.headers = {
       Accept: "application/json",
@@ -12,16 +12,24 @@ class FinnZhDictionary {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
     };
+    //this.maxexample = options.maxexample || 2;
   }
 
   async displayName() {
     let locale = await api.locale();
-    if (locale.indexOf("CN") != -1) return "朗文英汉5词典(MDX)";
-    if (locale.indexOf("TW") != -1) return "朗文英英5词典(MDX)";
-    return "enen_LDOCE5(MDX)";
+    if (locale.includes("CN")) return "芬汉双解词典";
+    if (locale.includes("TW")) return "芬漢雙解詞典";
+    return "Finnish-Chinese Dictionary";
+  }
+
+  setOptions(options) {
+    this.options = options;
+    this.maxexample = options.maxexample;
   }
 
   async findTerm(word) {
+    if (!word) return [];
+
     const params = {
       keyword: word,
       keyword_language: "fi",
@@ -33,30 +41,35 @@ class FinnZhDictionary {
       entry_langs: "true",
     };
 
-    const urlParams = new URLSearchParams(params).toString();
-    const url = `${this.apiUrl}?${urlParams}`;
-
     try {
-      const response = await api.fetch(url, {
+      const response = await axios.get(this.apiUrl, {
         headers: this.headers,
+        params,
       });
-
-      if (response.status !== 200) {
+      if (response.status !== 200)
         throw new Error(
           `Failed to fetch data. Status code: ${response.status}`
         );
-      }
 
-      const data = await response.json();
-      console.log(data);
-
+      const data = response.data.data;
       const translations = [];
 
-      data.data.forEach((entry) => {
+      data.forEach((entry) => {
+        const word = entry.index[0];
+        const pos = entry.pos.join(", ");
+
         entry.senses.forEach((sense) => {
+          const senseId = sense.id;
+          const created = sense.created;
+
           sense.examples.forEach((example) => {
+            const exampleText = example.text;
+            const exampleCreated = example.created;
+
             example.translations.forEach((translation) => {
               translations.push({
+                word,
+                pos,
                 translationText: translation.text,
                 ipa:
                   translation.ipa && translation.ipa.length > 0
@@ -71,23 +84,7 @@ class FinnZhDictionary {
 
       return translations;
     } catch (error) {
-      throw new Error(`Error fetching data: ${error.message}`);
+      throw new Error("Error fetching data: " + error);
     }
   }
 }
-
-// Example usage:
-const dictionary = new FinnZhDictionary();
-dictionary
-  .findTerm("nainen")
-  .then((translations) => {
-    translations.forEach((translation) => {
-      console.log(`Translation: ${translation.translationText}`);
-      console.log(`IPA: ${translation.ipa}`);
-      console.log(`Audio URL: ${translation.audioUrl}`);
-      console.log(); // 分隔翻译
-    });
-  })
-  .catch((error) => {
-    console.error(error);
-  });
